@@ -2,20 +2,35 @@
 
 让 DSH 的最终回答更容易听懂：用一个你选的模型润色最终回答，**默认显示润色版，原回答折叠、可随时点开查看**。主模型照常执行任务；润色只改表达，不改事实、条件与技术细节。
 
+## 效果对比
+
+同一段回答的“报告腔”与“说人话”两种呈现（红色框为对比前，蓝色框为对比后）：
+
+**对比前：报告腔**
+
+![对比前：报告腔](docs/compare-before.png)
+
+**对比后：说人话（默认显示）**
+
+![对比后：说人话](docs/compare-after.png)
+
 ## 安装
 
 任选其一（Web profile 把 `desktop` 换成 `web`）：
 
 1. 从 GitHub 安装：
+
    ```sh
    dsh plugin --profile desktop add -w "github:Exception-H/dsh-speak-plain"
    ```
 2. 本地源码安装：
+
    ```sh
    git clone https://github.com/Exception-H/dsh-speak-plain.git
    dsh plugin --profile desktop add -w ./dsh-speak-plain
    ```
 3. 使用发行版 `tgz`（已含编译产物）：
+
    ```sh
    dsh plugin --profile desktop add -w "完整路径/dsh-speak-plain-0.2.1.tgz"
    ```
