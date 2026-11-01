@@ -6,7 +6,7 @@
 
 任选其一（Web profile 把 `desktop` 换成 `web`）：
 
-1. 从 GitHub 安装（把 `Exception-H` 换成实际仓库）：
+1. 从 GitHub 安装：
    ```sh
    dsh plugin --profile desktop add -w "github:Exception-H/dsh-speak-plain"
    ```
