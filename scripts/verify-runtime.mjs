@@ -1,0 +1,36 @@
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { zstdDecompressSync } from 'node:zlib';
+import assert from 'node:assert/strict';
+const home = new URL('../.smoke/clean-home/', import.meta.url);
+const state = JSON.parse(await readFile(new URL('storages/speak_plain.json', home), 'utf8'));
+const result = Object.values(state.tables.results).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+assert.equal(result.status, 'ready');
+assert.match(result.text, /要求太多，有些互相打架/);
+assert.match(result.text, /```sh\necho hello\n```/);
+assert.match(result.text, /```dsh-ui\n\{"items":\[\{"type":"keyvalue"/);
+const calls = JSON.parse(await readFile(new URL('../.smoke/model-calls.json', import.meta.url), 'utf8'));
+assert.equal(calls.mainCalls, 1); assert.equal(calls.editCalls, 1);
+const root = new URL('sessions/', home);
+const paths = await readdir(root, { recursive: true });
+const sessionPath = paths.find(p => p.includes(result.sessionId) && p.endsWith('session.v4.jsonl.zstd'));
+assert.ok(sessionPath, 'Persisted session not found');
+const compressed = await readFile(new URL('sessions/' + sessionPath.replaceAll('\\', '/'), home));
+const decodedFrames = [];
+for (let offset = 0; offset < compressed.length;) {
+  const decoded = zstdDecompressSync(compressed.subarray(offset), { info: true });
+  assert.ok(decoded.engine.bytesWritten > 0, 'Zstandard decoder made no progress');
+  decodedFrames.push(decoded.buffer);
+  offset += decoded.engine.bytesWritten;
+}
+const logText = Buffer.concat(decodedFrames).toString('utf8');
+await writeFile(new URL('../.smoke/expanded-session.log', import.meta.url), logText);
+const records = logText.split('\n').filter(Boolean).map(line => JSON.parse(line));
+const original = records.findLast(record => record.type === 'assistant/message');
+assert.ok(original, 'Original assistant record not found');
+assert.equal(original.data.message.id, result.originalMessageId);
+assert.match(original.data.message.content[0].text, /多层约束之间存在冲突/);
+assert.match(original.data.message.content[0].text, /echo hello/);
+assert.equal(records.findLast(record => record.type === 'turn/end').data.reason.kind, 'completed');
+const proof = { status: 'passed', mainCalls: calls.mainCalls, editCalls: calls.editCalls, originalText: original.data.message.content[0].text, polishedText: result.text, originalMessageId: result.originalMessageId };
+await writeFile(new URL('../.smoke/runtime-proof.json', import.meta.url), JSON.stringify(proof, null, 2));
+console.log('REAL_DSH_RUNTIME_PASS: primary + editor, original preserved, code preserved, durable ready result, completed turn');

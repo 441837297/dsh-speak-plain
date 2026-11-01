@@ -1,0 +1,7 @@
+- id: agent-default-model
+  config:
+    provider: speak-plain-local-test
+    model: local-main
+- insert:
+    - id: speak-plain-local-provider
+      name: ./smoke-provider.mjs

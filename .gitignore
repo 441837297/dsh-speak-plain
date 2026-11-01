@@ -1,0 +1,7 @@
+node_modules/
+.smoke/
+artifacts/
+*.tgz
+*.log
+交接.md
+*.local.md

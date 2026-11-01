@@ -1,0 +1,131 @@
+.speak-plain-settings,
+.speak-plain-tail {
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: 1.6;
+  min-width: 0;
+}
+.speak-plain-settings {
+  max-width: 720px;
+  padding: 24px;
+}
+.speak-plain-settings h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.speak-plain-settings p,
+.speak-plain-tail p { margin: 8px 0; }
+.speak-plain-muted {
+  color: var(--dsw-alias-label-secondary, inherit);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+.speak-plain-settings fieldset {
+  border: 0;
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 0;
+}
+.speak-plain-check { display: flex; align-items: center; gap: 8px; }
+.speak-plain-check input { margin: 0; accent-color: var(--dsw-alias-label-primary); }
+.speak-plain-model-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.speak-plain-model-fields label,
+.speak-plain-preference { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.speak-plain-settings select,
+.speak-plain-settings textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--dsw-alias-border-l1, currentColor);
+  border-radius: var(--dsw-radius-md, 8px);
+  color: var(--dsw-alias-label-primary, inherit);
+  background: var(--dsw-alias-bg-base, transparent);
+  font: inherit;
+  padding: 9px 10px;
+}
+.speak-plain-settings textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+.speak-plain-settings textarea::placeholder { color: var(--dsw-alias-label-tertiary, inherit); }
+.speak-plain-settings button,
+.speak-plain-tail button {
+  font: inherit;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  color: var(--dsw-alias-label-primary, inherit);
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l1, currentColor);
+  border-radius: var(--dsw-radius-md, 8px);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.speak-plain-settings button:hover:not(:disabled),
+.speak-plain-tail button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover, transparent);
+}
+.speak-plain-settings button:disabled,
+.speak-plain-settings select:disabled { opacity: .55; cursor: not-allowed; }
+.speak-plain-settings :focus-visible,
+.speak-plain-tail button:focus-visible {
+  outline: 2px solid var(--dsw-alias-label-secondary, currentColor);
+  outline-offset: 3px;
+}
+.speak-plain-error {
+  color: var(--dsw-alias-label-primary, inherit);
+  border-left: 2px solid var(--dsw-alias-label-secondary, currentColor);
+  padding-left: 10px;
+  overflow-wrap: anywhere;
+}
+.speak-plain-notice { color: var(--dsw-alias-label-secondary, inherit); }
+.speak-plain-tail {
+  padding: 4px 0 8px;
+  margin-top: 2px;
+}
+.speak-plain-answer { min-width: 0; }
+.speak-plain-original > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  padding: 3px 0;
+  color: var(--dsw-alias-label-secondary, inherit);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+.speak-plain-original > summary::-webkit-details-marker { display: none; }
+.speak-plain-original > summary::before { content: '▸ '; }
+.speak-plain-original[open] > summary::before { content: '▾ '; }
+.speak-plain-original-body { margin-top: 6px; }
+.speak-plain-fallback { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }
+.speak-plain-label {
+  color: var(--dsw-alias-label-tertiary, inherit);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  margin: 0 0 2px;
+}
+.speak-plain-tail-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.speak-plain-tail .speak-plain-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+  border: 0;
+  padding: 4px 0;
+  font-weight: 600;
+}
+.speak-plain-result { margin-top: 12px; overflow-wrap: anywhere; min-width: 0; }
+.speak-plain-result pre { max-width: 100%; overflow-x: auto; }
+[data-speak-plain-hidden] { display: none !important; }
+.speak-plain-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 520px) {
+  .speak-plain-settings { padding: 16px; }
+  .speak-plain-model-fields { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}

@@ -1,0 +1,3 @@
+- insert:
+    - id: speak-plain
+      name: dsh-speak-plain
