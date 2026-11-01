@@ -80,3 +80,7 @@ Node.js 22.19+。宿主使用标准 ESM；浏览器产物符合 DSH ModuleLoader
 源码结构：`src/index.js` 注册领域、认证 RPC 和钩子；`src/service.js` 调用模型、等待和保存结果；`src/engine.js` 筛选回答与保护内容；`src/client.jsx` 提供设置和回合尾部显示。
 
 安装前请参阅 `VALIDATION.md`，其中记录实际执行的检查及验证范围。
+
+---
+
+**致谢** [LINUX DO](https://linux.do/) ｜ **许可** [MIT](LICENSE)
