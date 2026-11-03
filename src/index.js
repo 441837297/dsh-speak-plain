@@ -17,7 +17,7 @@ async function appendDebug(message) {
 export const name = 'speak-plain';
 export const inject = ['agents', 'llm', 'storageDomain'];
 export const settingsSchema = z.object({
-  enabled: z.boolean(), provider: z.string().max(500), model: z.string().max(500),
+  enabled: z.boolean(), autoPolish: z.boolean().default(false), provider: z.string().max(500), model: z.string().max(500),
   preference: z.string().max(6000), timeoutMs: z.number().int().min(5000).max(180000),
 }).strict();
 const resultSchema = z.object({
@@ -56,6 +56,9 @@ export function createFetchHandler(service) {
       else if (endpoint === 'result/get') {
         const input = z.object({ sessionId: z.string().min(1).max(500), turn: z.number().int().nonnegative() }).strict().parse(payload);
         value = service.getResult(input.sessionId, input.turn);
+      } else if (endpoint === 'result/polish') {
+        const input = z.object({ sessionId: z.string().min(1).max(500), turn: z.number().int().nonnegative() }).strict().parse(payload);
+        value = { result: await service.manualPolish(input.sessionId, input.turn, request.signal) };
       } else if (endpoint === 'debug') {
         const input = z.object({ message: z.string().max(4000) }).strict().parse(payload);
         await appendDebug(input.message);
@@ -63,7 +66,11 @@ export function createFetchHandler(service) {
       } else throw new Error('未知插件操作');
       result = { ok: true, value };
     } catch (error) {
-      result = { ok: false, error: { code: 'speak-plain-error', message: error instanceof z.ZodError ? '设置或请求格式不正确' : (error?.message === '请选择 DSH 已配置且可用的渠道和模型' ? error.message : '操作未完成，请检查 DSH 连接后重试') } };
+      const passthrough = error?.message === '请选择 DSH 已配置且可用的渠道和模型' || endpoint === 'result/polish';
+      const message = error instanceof z.ZodError
+        ? '设置或请求格式不正确'
+        : (passthrough && typeof error?.message === 'string' && error.message.length <= 300 ? error.message : '操作未完成，请检查 DSH 连接后重试');
+      result = { ok: false, error: { code: 'speak-plain-error', message } };
     }
     return Response.json({ type: 'server-response', rpcId, result });
   };

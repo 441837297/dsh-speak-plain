@@ -1,10 +1,10 @@
 # 验证记录
 
-验证日期：2026-11-01。当前版本：0.2.1。
+验证日期：2026-11-01。当前版本：0.3.1。
 
 ## 自动检查
 
-Node 内置测试运行器执行 27 项测试，全部通过。覆盖自动润色、最终回答筛选、设置保存、超时取消、并发隔离、原文保留和保护标记；真实 GenUI 卡片渲染、按钮动作归属会话、panel 去重、错误 JSON 回退、混合 Markdown、CRLF；以及“原回答默认折叠、可展开/收起、卸载恢复”等回归场景。
+Node 内置测试运行器执行 31 项测试，全部通过。覆盖自动润色、最终回答筛选、设置保存、超时取消、并发隔离、原文保留和保护标记；真实 GenUI 卡片渲染、按钮动作归属会话、panel 去重、错误 JSON 回退、混合 Markdown、CRLF；“原回答默认折叠、可展开/收起、卸载恢复”；以及“自动润色关闭时不调用模型、按需手动润色”等回归场景。
 
 前端测试执行发布的 `lib/client.js`，其中包含真实的 `@changfenhuang/dsh-genui/embed` 组件与 CSS Modules。仅 DSH 基础 Markdown/代码控件使用替身，GenUI 卡片和按钮不再使用普通文本替身。构建检查确认样式占位符已经替换为组件 CSS。
 
@@ -24,7 +24,7 @@ Node 内置测试运行器执行 27 项测试，全部通过。覆盖自动润�
 
 `panel:true` 围栏有意不在润色区再次发布，避免重复 append；原会话面板继续承担显示。原组件与润色副本的本地交互状态分开保存。
 
-0.2.1 保持原 storage-domain 名称、版本和设置结构。更新已安装包时，不清空用户选择的模型、启用开关、提示词或历史结果。当前运行进程不会被强制重启，用户需要重启 DSH 加载新代码。
+0.3.1 保持原 storage-domain 名称、版本和设置结构；新增的 autoPolish 字段缺省为 false：旧配置（字段缺失或为 null）一律按“手动润色”处理，不会自动消耗额度。手动模式下即使该回答已有旧润色结果，也提供“重新润色”。更新已安装包时，不清空用户选择的模型、启用开关、提示词或历史结果。当前运行进程不会被强制重启，用户需要重启 DSH 加载新代码。
 
 ## 复现
 
@@ -38,7 +38,7 @@ pnpm pack --pack-destination artifacts
 
 ```powershell
 $env:DSH_SMOKE_APP = '<DeepSeek Harness 安装目录>\DeepSeek Harness.exe'
-node scripts/runtime-cli.mjs plugin --profile headless add -w "$PWD/artifacts/dsh-speak-plain-0.2.1.tgz"
+node scripts/runtime-cli.mjs plugin --profile headless add -w "$PWD/artifacts/dsh-speak-plain-0.3.1.tgz"
 node scripts/runtime-cli.mjs --profile headless --patch scripts/smoke.patch.yml '验证润色功能，不执行任何工具。'
 node scripts/verify-runtime.mjs
 ```

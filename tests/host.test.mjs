@@ -20,11 +20,15 @@ function agent(id = 's1', text = '多层约束之间存在冲突，导致表达�
 }
 function fixture(options = {}) {
   const settings = table(), results = table();
-  settings.data.set('global', { ...DEFAULT_SETTINGS, enabled: true, provider: 'editor', model: 'plain', timeoutMs: 5000, ...options.settings });
+  settings.data.set('global', { ...DEFAULT_SETTINGS, enabled: true, autoPolish: true, provider: 'editor', model: 'plain', timeoutMs: 5000, ...options.settings });
   const agents = options.agents ?? [agent()];
   const calls = [];
   const ctx = {
-    agents: { roots: () => options.roots ?? agents }, logger: { warn() {} },
+    agents: {
+      roots: () => options.roots ?? agents,
+      get: id => (options.roots ?? agents).find(a => a.id === id),
+    },
+    logger: { warn() {} },
     llm: {
       listProviders: () => [{ id: 'editor', name: '编辑渠道' }],
       listModels: async () => [{ id: 'plain', name: '白话模型' }],
@@ -161,4 +165,35 @@ test('RPC envelope, schema validation and result response match Connection proto
   assert.equal((await call('result/get', { sessionId: 's1', turn: 1 })).result.value.result, null);
   assert.equal((await call('result/get', { sessionId: 's1', turn: -1 })).result.ok, false);
   assert.equal((await handler(new Request('http://local', { method: 'POST', body: '{' }))).status, 400);
+});
+test('autoPolish off: stopping does nothing, canManual true, manual polish runs on demand', async () => {
+  const f = fixture({ settings: { autoPolish: false } });
+  await f.stop();
+  assert.equal(f.calls.length, 0, 'auto off must not call the model');
+  assert.equal(f.service.getResult('s1', 1).canManual, true);
+  await f.service.manualPolish('s1', 1, new AbortController().signal);
+  let record = null;
+  for (let i = 0; i < 100; i++) {
+    record = f.service.getResult('s1', 1).result;
+    if (record && record.status !== 'pending') break;
+    await new Promise(res => setTimeout(res, 5));
+  }
+  assert.equal(f.calls.length, 1, 'manual polish should call once');
+  assert.equal(record.status, 'ready');
+  assert.match(record.text, /要求太多/);
+});
+test('legacy settings without autoPolish (missing or null) are treated as manual mode', () => {
+  for (const legacy of [undefined, null]) {
+    const f = fixture({ settings: { autoPolish: legacy } });
+    if (legacy === undefined) delete f.settings.data.get('global').autoPolish;
+    assert.equal(f.service.settings().autoPolish, false, `autoPolish=${String(legacy)} must not auto-run`);
+    assert.equal(f.service.getResult('s1', 1).canManual, true);
+  }
+});
+test('autoPolish on: canManual false and stopping polishes automatically', async () => {
+  const f = fixture();
+  await f.stop();
+  const got = f.service.getResult('s1', 1);
+  assert.equal(got.canManual, false);
+  assert.equal(got.result.status, 'ready');
 });

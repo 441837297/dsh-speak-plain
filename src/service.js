@@ -11,7 +11,11 @@ export class SpeakPlainService {
     this.lifetime = new AbortController();
     this.active = new Map();
   }
-  settings() { return this.tables.settings.get('global') ?? { ...DEFAULT_SETTINGS }; }
+  /** Old records have no autoPolish field: only an explicit true enables automatic polishing. */
+  settings() {
+    const raw = this.tables.settings.get('global') ?? {};
+    return { ...DEFAULT_SETTINGS, ...raw, autoPolish: raw.autoPolish === true };
+  }
   dispose() { this.lifetime.abort(new Error('插件已停用')); }
   async snapshot(signal) {
     const providers = await Promise.all(this.ctx.llm.listProviders().map(async provider => {
@@ -38,17 +42,18 @@ export class SpeakPlainService {
   getResult(sessionId, turn) {
     const key = resultKey(sessionId, turn);
     const result = this.tables.results.get(key) ?? null;
-    if (result?.status === 'pending' && !this.active.has(key)) {
-      return { result: { ...result, status: 'failed', error: '上次润色已中断，原回答已保留' } };
+    const s = this.settings();
+    const canManual = Boolean(s.enabled && s.provider && s.model && !s.autoPolish);    if (result?.status === 'pending' && !this.active.has(key)) {
+      return { result: { ...result, status: 'failed', error: '上次润色已中断，原回答已保留' }, canManual };
     }
-    return { result };
+    return { result, canManual };
   }
   async stopping({ agent, turn, signal }) {
     try {
       // roots() reflects live ownership, unlike fork lineage which can belong to a user session.
       if (!this.ctx.agents.roots().some(root => root.id === agent.id)) return;
       const settings = this.settings();
-      if (!settings.enabled || !settings.provider || !settings.model || signal.aborted || this.lifetime.signal.aborted) return;
+      if (!settings.enabled || !settings.autoPolish || !settings.provider || !settings.model || signal.aborted || this.lifetime.signal.aborted) return;
       const candidate = findCandidate(agent.session.log, turn);
       if (!candidate) return;
       const key = resultKey(agent.id, turn);
@@ -64,6 +69,26 @@ export class SpeakPlainService {
       // A secondary editing failure must not turn a successful primary answer into an agent error.
       this.ctx.logger.warn('[speak-plain] 润色处理未完成，原回答已保留');
     }
+  }
+  /** Manual polish for one turn (used when automatic polishing is off). */
+  async manualPolish(sessionId, turn, signal) {
+    const settings = this.settings();
+    if (!settings.enabled || !settings.provider || !settings.model) throw new Error('请先在“设置 → 说人话”里选好渠道和模型并启用');
+    const agent = this.ctx.agents.get(sessionId);
+    if (!agent) throw new Error('对应会话当前不可用，无法润色这段回答');
+    const candidate = findCandidate(agent.session.log, turn);
+    if (!candidate) throw new Error('这一段没有可润色的最终回答');
+    const key = resultKey(sessionId, turn);
+    if (this.active.has(key)) { await this.active.get(key); }
+    else {
+      const signature = hashText(JSON.stringify([candidate.messageId, candidate.text, settings]));
+      const operation = this.polish(sessionId, turn, candidate, settings, signature, signal);
+      this.active.set(key, operation);
+      try { await operation; } finally { this.active.delete(key); }
+    }
+    const result = this.getResult(sessionId, turn).result;
+    if (result?.status === 'ready') return result;
+    throw new Error(result?.error || '润色未完成，原回答已保留');
   }
   async polish(sessionId, turn, candidate, settings, signature, parentSignal) {
     const key = resultKey(sessionId, turn);

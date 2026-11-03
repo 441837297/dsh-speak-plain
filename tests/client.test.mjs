@@ -235,3 +235,28 @@ test('turn tail hides the sibling assistant-step answer row and can reveal it', 
   }
   assert.equal(ans.hasAttribute('data-speak-plain-hidden'), false, 'unmount restores the original row');
 });
+
+test('manual mode shows a polish button and renders the result after clicking', async () => {
+  let polished = false;
+  const endpoints = [];
+  const call = async endpoint => {
+    endpoints.push(endpoint);
+    if (endpoint === 'result/get') return { result: polished ? ready('a', '手动润色结果') : null, canManual: true };
+    if (endpoint === 'result/polish') { polished = true; return { started: true }; }
+    if (endpoint === 'debug') return { ok: true };
+    return {};
+  };
+  const ui = await mount(client.SpeakPlainTurnTail, { call, sessionId: 'a', turn: { turn: 1, status: 'closed' }, seq: 9 });
+  try {
+    await flush();
+    assert.match(ui.container.textContent, /还没有润色/);
+    const button = [...ui.container.querySelectorAll('button')].find(b => b.textContent === '润色这段回答');
+    assert.ok(button, 'manual polish button should be visible');
+    await act(async () => button.click());
+    await flush();
+    await act(async () => { await new Promise(res => setTimeout(res, 60)); });
+    await flush();
+    assert.ok(endpoints.includes('result/polish'));
+    assert.match(ui.container.textContent, /手动润色结果/);
+  } finally { await ui.close(); }
+});

@@ -17,6 +17,7 @@ function messageOf(error) {
 function normalizeSettings(value = {}) {
   return {
     enabled: value.enabled === true,
+    autoPolish: value.autoPolish === true,
     provider: typeof value.provider === 'string' ? value.provider : '',
     model: typeof value.model === 'string' ? value.model : '',
     preference: typeof value.preference === 'string' ? value.preference : '',
@@ -100,10 +101,12 @@ export function SpeakPlainSettings({ call }) {
 
   return <section className="speak-plain-settings">
     <h2>说人话</h2>
-    <p className="speak-plain-muted">用你选择的模型整理最终回答，让表达更容易理解。原回答会保留，润色结果显示在它下方。</p>
+    <p className="speak-plain-muted">用你选择的模型整理最终回答，让表达更容易理解。原回答会保留，润色版默认显示、原回答可折叠查看。</p>
     {loading ? <p role="status">正在读取设置…</p> : snapshotReady ? <form onSubmit={save}>
       <fieldset disabled={saving}>
         <label className="speak-plain-check"><input type="checkbox" checked={settings.enabled} onChange={event => update({ enabled: event.target.checked })} />启用最终回答润色</label>
+        <label className="speak-plain-check"><input type="checkbox" checked={settings.autoPolish} onChange={event => update({ autoPolish: event.target.checked })} />自动润色所有回答</label>
+        <p className="speak-plain-muted">关闭“自动润色”时不会每轮都调用模型：只有你点了某个回答下方的“润色这段回答”才润色那一段，更省额度。</p>
         <div className="speak-plain-model-fields">
           <label>渠道<select value={settings.provider} onChange={event => update({ provider: event.target.value, model: '' })}>
             <option value="">请选择渠道</option>
@@ -138,17 +141,24 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
   const [copyStatus, setCopyStatus] = useState('')
   const [showOriginal, setShowOriginal] = useState(false)
   const [foundOriginal, setFoundOriginal] = useState(false)
+  const [manual, setManual] = useState(false)
+  const [polishing, setPolishing] = useState(false)
+  const [manualError, setManualError] = useState('')
   const rootRef = useRef(null)
   const answerRef = useRef(null)
+  const pollRef = useRef(null)
   const debugSent = useRef('')
   const currentIdentity = useRef(identity)
   const mounted = useRef(false)
   currentIdentity.current = identity
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; if (pollRef.current) { pollRef.current.abort(); pollRef.current = null } } }, [])
 
   useEffect(() => {
     setExpanded(true)
     setCopyStatus('')
+    setPolishing(false)
+    setManualError('')
+    setManual(false)
     if (!closed || typeof sessionId !== 'string' || !Number.isInteger(turnNumber)) {
       setState({ identity, loading: false, result: null, error: '' })
       return
@@ -157,14 +167,17 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
     setState({ identity, loading: true, result: null, error: '' })
     call('result/get', { sessionId, turn: turnNumber }, controller.signal).then(value => {
       if (controller.signal.aborted) return
+      const canManual = value?.canManual === true
       const result = value.result ?? null
       if (result && (result.sessionId !== sessionId || result.turn !== turnNumber)) throw new Error('返回的结果与当前回合不匹配。')
       if (result && result.originalSeq !== seq) {
+        setManual(canManual)
         setState({ identity, loading: false, result: null, error: '' })
         return
       }
       if (result && !['ready', 'failed', 'skipped', 'pending'].includes(result.status)) throw new Error('返回了无法识别的润色状态。')
       if (result?.status === 'ready' && typeof result.text !== 'string') throw new Error('润色结果缺少正文。')
+      setManual(canManual)
       setState({ identity, loading: false, result, error: '' })
     }).catch(error => {
       if (!controller.signal.aborted) setState({ identity, loading: false, result: null, error: messageOf(error) })
@@ -175,7 +188,11 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
   const readyResult = state.identity === identity && state.result && state.result.status === 'ready' ? state.result : null
 
   // Reset the reveal toggle whenever we move to a different turn/answer.
-  useEffect(() => { setShowOriginal(false); setFoundOriginal(false); answerRef.current = null }, [identity, readyResult === null])
+  useEffect(() => {
+    setShowOriginal(false); setFoundOriginal(false); answerRef.current = null
+    setPolishing(false); setManualError('')
+    if (pollRef.current) { pollRef.current.abort(); pollRef.current = null }
+  }, [identity, readyResult === null])
 
   // Collapse the REAL original answer row (the chat's own, untouched render) by
   // hiding the sibling flow item, and reveal it only when the reader asks. This
@@ -219,13 +236,49 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
     }
   }, [readyResult, showOriginal, identity, call, turnNumber])
 
+  async function startManual() {
+    if (polishing) return
+    setManualError('')
+    setPolishing(true)
+    const controller = new AbortController()
+    pollRef.current = controller
+    try {
+      await call('result/polish', { sessionId, turn: turnNumber }, controller.signal)
+      const deadline = Date.now() + 90000
+      while (mounted.current && currentIdentity.current === identity && !controller.signal.aborted && Date.now() < deadline) {
+        const value = await call('result/get', { sessionId, turn: turnNumber }, controller.signal)
+        const r = value?.result ?? null
+        if (r && r.originalSeq === seq && ['ready', 'failed', 'skipped'].includes(r.status)) {
+          setState({ identity, loading: false, result: r, error: '' })
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 1200))
+      }
+    } catch (error) {
+      if (!controller.signal.aborted && mounted.current && currentIdentity.current === identity) setManualError(messageOf(error))
+    } finally {
+      if (pollRef.current === controller) pollRef.current = null
+      if (mounted.current && currentIdentity.current === identity) setPolishing(false)
+    }
+  }
+
   if (!closed || state.identity !== identity) return null
   if (state.loading) return <div className="speak-plain-tail speak-plain-muted" role="status">正在读取润色结果…</div>
   if (state.error) return <aside className="speak-plain-tail"><p className="speak-plain-error" role="alert">无法读取润色结果：{state.error} 原回答仍保留在上方。</p><button type="button" onClick={() => setRetry(value => value + 1)}>重试读取</button></aside>
   const result = state.result
-  if (!result || result.status === 'skipped') return null
-  if (result.status === 'failed') return <aside className="speak-plain-tail"><strong>说人话</strong><p className="speak-plain-muted">润色未完成：{result.error || '模型调用失败。'} 原回答仍保留在上方。</p></aside>
-  if (result.status === 'pending') return <aside className="speak-plain-tail"><p className="speak-plain-muted" role="status">润色结果尚未就绪，原回答仍保留在上方。</p><button type="button" onClick={() => setRetry(value => value + 1)}>重新读取</button></aside>
+  if (!result || result.status === 'skipped') {
+    if (polishing) return <aside className="speak-plain-tail"><p className="speak-plain-muted" role="status">正在润色这段回答…（可能需要十几秒）</p></aside>
+    if (manual) return <aside className="speak-plain-tail">
+      <p className="speak-plain-muted">这段回答还没有润色。</p>
+      {manualError && <p className="speak-plain-error" role="alert">{manualError}</p>}
+      <button type="button" onClick={startManual}>润色这段回答</button>
+    </aside>
+    return null
+  }  if (result.status === 'failed') return <aside className="speak-plain-tail"><strong>说人话</strong><p className="speak-plain-muted">润色未完成：{result.error || '模型调用失败。'} 原回答仍保留在上方。</p>{manual && !polishing && <button type="button" onClick={startManual}>重新润色</button>}{polishing && <p className="speak-plain-muted" role="status">正在润色…</p>}</aside>
+  if (result.status === 'pending') {
+    if (polishing || manual) return <aside className="speak-plain-tail"><p className="speak-plain-muted" role="status">正在润色这段回答…</p></aside>
+    return <aside className="speak-plain-tail"><p className="speak-plain-muted" role="status">润色结果尚未就绪，原回答仍保留在上方。</p><button type="button" onClick={() => setRetry(value => value + 1)}>重新读取</button></aside>
+  }
 
   async function copy() {
     const copiedIdentity = identity
@@ -244,9 +297,11 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
       <span className="speak-plain-actions">
         {foundOriginal && <button type="button" aria-pressed={showOriginal} onClick={() => setShowOriginal(value => !value)}>{showOriginal ? '收起原回答' : '查看原回答'}</button>}
         <button type="button" onClick={copy}>复制润色结果</button>
+        {manual && <button type="button" disabled={polishing} onClick={startManual}>{polishing ? '正在润色…' : '重新润色'}</button>}
       </span>
     </div>
     <div className="speak-plain-result" hidden={!expanded}><SpeakPlainContent text={result.text} sessionId={sessionId} messageId={result.originalMessageId} originalSeq={seq} onAction={sendAction ? (action, payload) => sendAction(sessionId, action, payload) : undefined} /></div>
+    {manualError && <p className="speak-plain-error" role="alert">{manualError}</p>}
     {copyStatus && <p className="speak-plain-muted" role="status">{copyStatus}</p>}
   </aside>
 }

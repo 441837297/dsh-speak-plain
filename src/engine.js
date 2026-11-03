@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export const DEFAULT_SETTINGS = Object.freeze({
-  enabled: false, provider: '', model: '', timeoutMs: 60000,
+  enabled: false, autoPolish: false, provider: '', model: '', timeoutMs: 60000,
   preference: '像同事聊天一样解释。先说结果，用具体、自然的中文，少用抽象术语；必要细节和不确定性要保留。',
 });
 export const MAX_INPUT_CHARS = 60000;
