@@ -1,5 +1,5 @@
 {
-  "name": "dsh-speak-plain",
+  "name": "dsh-speak-plain-trim",
   "version": "0.3.1",
   "description": "DSH 最终回答自动润色：用你选的模型把回答说清楚，保留原文。",
   "keywords": [

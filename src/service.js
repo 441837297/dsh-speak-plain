@@ -73,7 +73,7 @@ export class SpeakPlainService {
   /** Manual polish for one turn (used when automatic polishing is off). */
   async manualPolish(sessionId, turn, signal) {
     const settings = this.settings();
-    if (!settings.enabled || !settings.provider || !settings.model) throw new Error('请先在“设置 → 说人话”里选好渠道和模型并启用');
+    if (!settings.enabled || !settings.provider || !settings.model) throw new Error('请先在“设置 → 说人话 · 精修版”里选好渠道和模型并启用');
     const agent = this.ctx.agents.get(sessionId);
     if (!agent) throw new Error('对应会话当前不可用，无法润色这段回答');
     const candidate = findCandidate(agent.session.log, turn);

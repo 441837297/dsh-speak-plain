@@ -89,5 +89,5 @@ export async function apply(ctx) {
   }));
   ctx.on('agent/turn-stopping', payload => service.stopping(payload));
   ctx.provide('speakPlain', service);
-  ctx.logger.info('[speak-plain] 已加载，在设置 → 说人话中选择润色模型后启用');
+  ctx.logger.info('[speak-plain] 已加载，在设置 → 说人话 · 精修版中选择润色模型后启用');
 }

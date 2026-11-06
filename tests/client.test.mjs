@@ -17,7 +17,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const require = createRequire(import.meta.url);
 let client;
 window.__ModuleLoader__ = { load({ id, factory }) {
-  assert.equal(id, 'dsh-speak-plain');
+  assert.equal(id, 'dsh-speak-plain-trim');
   client = factory(id => id === '@deepseek-ai/dsh-client-ui-primitives'
     ? {
       MarkdownText: ({ text }) => React.createElement('pre', { 'data-markdown': true }, text),

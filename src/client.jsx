@@ -100,7 +100,7 @@ export function SpeakPlainSettings({ call }) {
   }
 
   return <section className="speak-plain-settings">
-    <h2>说人话</h2>
+    <h2>说人话 · 精修版</h2>
     <p className="speak-plain-muted">用你选择的模型整理最终回答，让表达更容易理解。原回答会保留，润色版默认显示、原回答可折叠查看。</p>
     {loading ? <p role="status">正在读取设置…</p> : snapshotReady ? <form onSubmit={save}>
       <fieldset disabled={saving}>
@@ -274,7 +274,7 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
       <button type="button" onClick={startManual}>润色这段回答</button>
     </aside>
     return null
-  }  if (result.status === 'failed') return <aside className="speak-plain-tail"><strong>说人话</strong><p className="speak-plain-muted">润色未完成：{result.error || '模型调用失败。'} 原回答仍保留在上方。</p>{manual && !polishing && <button type="button" onClick={startManual}>重新润色</button>}{polishing && <p className="speak-plain-muted" role="status">正在润色…</p>}</aside>
+  }  if (result.status === 'failed') return <aside className="speak-plain-tail"><strong>说人话 · 精修版</strong><p className="speak-plain-muted">润色未完成：{result.error || '模型调用失败。'} 原回答仍保留在上方。</p>{manual && !polishing && <button type="button" onClick={startManual}>重新润色</button>}{polishing && <p className="speak-plain-muted" role="status">正在润色…</p>}</aside>
   if (result.status === 'pending') {
     if (polishing || manual) return <aside className="speak-plain-tail"><p className="speak-plain-muted" role="status">正在润色这段回答…</p></aside>
     return <aside className="speak-plain-tail"><p className="speak-plain-muted" role="status">润色结果尚未就绪，原回答仍保留在上方。</p><button type="button" onClick={() => setRetry(value => value + 1)}>重新读取</button></aside>
@@ -291,9 +291,9 @@ export function SpeakPlainTurnTail({ call, sessionId, turn, seq, sendAction }) {
     }
   }
 
-  return <aside className="speak-plain-tail" aria-label="说人话润色结果" ref={rootRef}>
+  return <aside className="speak-plain-tail" aria-label="说人话 · 精修版的润色结果" ref={rootRef}>
     <div className="speak-plain-tail-heading">
-      <button type="button" className="speak-plain-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}><span aria-hidden="true">{expanded ? '▾' : '▸'}</span>说人话 · {result.model || '润色结果'}</button>
+      <button type="button" className="speak-plain-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}><span aria-hidden="true">{expanded ? '▾' : '▸'}</span>说人话 · 精修版 · {result.model || '润色结果'}</button>
       <span className="speak-plain-actions">
         {foundOriginal && <button type="button" aria-pressed={showOriginal} onClick={() => setShowOriginal(value => !value)}>{showOriginal ? '收起原回答' : '查看原回答'}</button>}
         <button type="button" onClick={copy}>复制润色结果</button>
@@ -332,7 +332,7 @@ export function apply(ctx) {
     return () => element.remove()
   }, 'speak-plain: theme styles')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section', id: 'speak-plain', order: 30, label: () => '说人话', inject: () => ({ call }),
+    name: 'settings.section', id: 'speak-plain', order: 30, label: () => '说人话 · 精修版', inject: () => ({ call }),
   }, SpeakPlainSettings))
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
     name: 'conversation.chat.turnTail', id: 'speak-plain', order: 10, inject: () => ({ call, sendAction }),
